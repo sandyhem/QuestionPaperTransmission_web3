@@ -5,6 +5,8 @@ import SimpleStorage from "./contracts/SimpleStorage.json"
 export default function App() {
 
   const [state,setState]=useState({web3:null,contract:null});
+  const [data,setData]=useState("nil");
+
   useEffect(()=>{
     //to connect to bc
     const provider = new Web3.providers.HttpProvider("HTTP://127.0.0.1:7545");//from ganache
@@ -28,8 +30,34 @@ export default function App() {
     }
     provider && template();
   },[]);
-  console.log(state)
+  // console.log(state)
+
+  //TO READ: call()
+  //TO WRITE: send()
+  useEffect(()=>{
+    const {contract}=state;
+    async function readData(){
+      //in the contract->methods->method_name->call
+      const data =await contract.methods.getter().call();
+      setData(data);
+      // console.log(data);
+    }
+    contract && readData(); //contract obj ready then call the readData()
+  },[state]);
+
+  async function writeData(){
+    const {contract}=state;
+    const data = document.querySelector("#value").value;
+    await contract.methods
+      .setter(data)
+      .send({from:"0xaCc62B18d29fB72E3628C2e836Dd16917070a7E8"});
+    window.location.reload();
+  }
   return (
-    <div>App</div>
+    <div>
+      <p>Contract data: {data}</p>
+      <input type="text" id="value" />
+      <button onClick={writeData}>Change Data</button>
+    </div>
   )
 }
