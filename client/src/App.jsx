@@ -1,63 +1,128 @@
-import React, { useEffect, useState } from 'react'
-import Web3 from 'web3'
-import SimpleStorage from "./contracts/SimpleStorage.json"
+import React, { useEffect, useState } from "react";
+import Web3 from "web3";
+import UserProfile from "./contracts/UserProfile.json";
 
 export default function App() {
+  const [state, setState] = useState({ web3: null, contract: null, account: null });
+  const [users, setUsers] = useState([]);
 
-  const [state,setState]=useState({web3:null,contract:null});
-  const [data,setData]=useState("nil");
+  useEffect(() => {
+    async function connectWallet() {
+      if (window.ethereum) {
+        try {
+          const web3 = new Web3(window.ethereum);
+          await window.ethereum.request({ method: "eth_requestAccounts" });
+          const accounts = await web3.eth.getAccounts();
 
-  useEffect(()=>{
-    //to connect to bc
-    const provider = new Web3.providers.HttpProvider("HTTP://127.0.0.1:7545");//from ganache
-    async function template(){
-      const web3 =new Web3(provider);
-      // console.log(web3);
+          const networkId = await web3.eth.net.getId();
+          const deployedNetwork = UserProfile.networks[networkId];
 
-      //to interact with a smart contract we require two things:
-      //1.ABI
-      //2.Contract Address
+          if (!deployedNetwork) {
+            console.error("Contract not deployed on this network.");
+            return;
+          }
 
-      //to get the smart contract address:
-      const networkId = await web3.eth.net.getId();
-      const deployedNetwork = SimpleStorage.networks[networkId];
-      // console.log(deployedNetwork.address);
+          const contract = new web3.eth.Contract(UserProfile.abi, deployedNetwork.address);
+          setState({ web3, contract, account: accounts[0] });
 
-      //To get the ABI
-      const contract =new web3.eth.Contract(SimpleStorage.abi,deployedNetwork.address);
-      //console.log(contract);//instance of our constant with whom we are going to make an interaction
-      setState({web3:web3,contract:contract});
+          window.ethereum.on("accountsChanged", (accounts) => {
+            setState((prevState) => ({ ...prevState, account: accounts[0] }));
+          });
+
+          fetchUsers(contract);
+        } catch (error) {
+          console.error("User denied wallet connection:", error);
+        }
+      } else {
+        console.error("MetaMask not detected.");
+      }
     }
-    provider && template();
-  },[]);
-  // console.log(state)
 
-  //TO READ: call()
-  //TO WRITE: send()
-  useEffect(()=>{
-    const {contract}=state;
-    async function readData(){
-      //in the contract->methods->method_name->call
-      const data =await contract.methods.getter().call();
-      setData(data);
-      // console.log(data);
+    connectWallet();
+  }, []);
+
+  async function fetchUsers(contract) {
+    if (!contract) return;
+    let userList = [];
+    const userCount = await contract.methods.userCount().call();
+
+    for (let i = 1; i <= userCount; i++) {
+      const user = await contract.methods.getUser(i).call();
+       if(user.age!=0)
+       userList.push(user);
     }
-    contract && readData(); //contract obj ready then call the readData()
-  },[state]);
-
-  async function writeData(){
-    const {contract}=state;
-    const data = document.querySelector("#value").value;
-    await contract.methods
-      .setter(data)
-      .send({from:"0xaCc62B18d29fB72E3628C2e836Dd16917070a7E8"});
-    window.location.reload();
+    setUsers(userList);
   }
+
+  
+  async function createUser() {
+    const { contract, account } = state;
+    const name = document.querySelector("#name").value;
+    const age = document.querySelector("#age").value;
+
+    if (!account) {
+      alert("Please connect your wallet!");
+      return;
+    }
+
+    try {
+      await contract.methods.createUser(name, age).send({ from: account });
+    } catch (error) {
+      console.error("Transaction failed:", error);
+    }
+  }
+
+  async function updateUser() {
+    const { contract, account } = state;
+    const id = document.querySelector("#updateId").value;
+    const name = document.querySelector("#updateName").value;
+    const age = document.querySelector("#updateAge").value;
+
+    try {
+      await contract.methods.updateUser(id, name, age).send({ from: account });
+    } catch (error) {
+      console.error("Transaction failed:", error);
+    }
+  }
+
+  async function deleteUser() {
+    const { contract, account } = state;
+    const id = document.querySelector("#deleteId").value;
+
+    try {
+      await contract.methods.deleteUser(id).send({ from: account });
+    } catch (error) {
+      console.error("Transaction failed:", error);
+    }
+  }
+
   return (
     <div>
-      <p>Contract data: {data}</p>
-      <input type="text" id="value" />
-      <button onClick={writeData}>Change Data</button>
+      <h2>Connected Account: {state.account || "Not Connected"}</h2>
+
+      <h3>Create User</h3>
+      <input type="text" id="name" placeholder="Name" />
+      <input type="number" id="age" placeholder="Age" />
+      <button onClick={createUser}>Add User</button>
+
+      <h3>Update User</h3>
+      <input type="number" id="updateId" placeholder="User ID" />
+      <input type="text" id="updateName" placeholder="New Name" />
+      <input type="number" id="updateAge" placeholder="New Age" />
+      <button onClick={updateUser}>Update User</button>
+
+      <h3>Delete User</h3>
+      <input type="number" id="deleteId" placeholder="User ID" />
+      <button onClick={deleteUser}>Delete User</button>
+
+      <h3>User List</h3>
+      <ul>
+        {users.map((user) => (
+          <li key={user.id}>
+            ID: {user.id}, Name: {user.name}, Age: {user.age}
+          </li>
+        ))}
+      </ul>
     </div>
-  )
+  );
 }
