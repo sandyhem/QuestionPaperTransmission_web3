@@ -1,128 +1,73 @@
-import React, { useEffect, useState } from "react";
-import Web3 from "web3";
-import UserProfile from "./contracts/UserProfile.json";
+import React, { useState, useEffect } from "react";
+import { BrowserRouter as Router, Routes, Route, Navigate } from "react-router-dom";
+import "bootstrap/dist/css/bootstrap.min.css"; // Import Bootstrap here
+import "./App.css"; // Keep your custom styles after Bootstrap
+import "./COE.css";
 
-export default function App() {
-  const [state, setState] = useState({ web3: null, contract: null, account: null });
-  const [users, setUsers] = useState([]);
+import Login from "./pages/login";
+import COE from "./pages/COE";
+import SuperintendentPortal from "./pages/loginSuper";
+import AddSuperintendent from "./pages/Superintendent";
+import TeacherPortal from "./pages/Teacher";
+import loginsuper from "./pages/loginSuper"; // Correctly added page
+import RecipientPortal from "./pages/Recipient";
+import CreatePaperRequest from "./pages/PaperRequest";
+
+function App() {
+  // Initialize user state from localStorage
+  const [user, setUser] = useState(() => {
+    return JSON.parse(localStorage.getItem("user")) || null;
+  });
 
   useEffect(() => {
-    async function connectWallet() {
-      if (window.ethereum) {
-        try {
-          const web3 = new Web3(window.ethereum);
-          await window.ethereum.request({ method: "eth_requestAccounts" });
-          const accounts = await web3.eth.getAccounts();
-
-          const networkId = await web3.eth.net.getId();
-          const deployedNetwork = UserProfile.networks[networkId];
-
-          if (!deployedNetwork) {
-            console.error("Contract not deployed on this network.");
-            return;
-          }
-
-          const contract = new web3.eth.Contract(UserProfile.abi, deployedNetwork.address);
-          setState({ web3, contract, account: accounts[0] });
-
-          window.ethereum.on("accountsChanged", (accounts) => {
-            setState((prevState) => ({ ...prevState, account: accounts[0] }));
-          });
-
-          fetchUsers(contract);
-        } catch (error) {
-          console.error("User denied wallet connection:", error);
-        }
-      } else {
-        console.error("MetaMask not detected.");
-      }
+    // Store user in localStorage when it changes
+    if (user) {
+      localStorage.setItem("user", JSON.stringify(user));
+    } else {
+      localStorage.removeItem("user");
     }
-
-    connectWallet();
-  }, []);
-
-  async function fetchUsers(contract) {
-    if (!contract) return;
-    let userList = [];
-    const userCount = await contract.methods.userCount().call();
-
-    for (let i = 1; i <= userCount; i++) {
-      const user = await contract.methods.getUser(i).call();
-       if(user.age!=0)
-       userList.push(user);
-    }
-    setUsers(userList);
-  }
-
-  
-  async function createUser() {
-    const { contract, account } = state;
-    const name = document.querySelector("#name").value;
-    const age = document.querySelector("#age").value;
-
-    if (!account) {
-      alert("Please connect your wallet!");
-      return;
-    }
-
-    try {
-      await contract.methods.createUser(name, age).send({ from: account });
-    } catch (error) {
-      console.error("Transaction failed:", error);
-    }
-  }
-
-  async function updateUser() {
-    const { contract, account } = state;
-    const id = document.querySelector("#updateId").value;
-    const name = document.querySelector("#updateName").value;
-    const age = document.querySelector("#updateAge").value;
-
-    try {
-      await contract.methods.updateUser(id, name, age).send({ from: account });
-    } catch (error) {
-      console.error("Transaction failed:", error);
-    }
-  }
-
-  async function deleteUser() {
-    const { contract, account } = state;
-    const id = document.querySelector("#deleteId").value;
-
-    try {
-      await contract.methods.deleteUser(id).send({ from: account });
-    } catch (error) {
-      console.error("Transaction failed:", error);
-    }
-  }
+  }, [user]);
 
   return (
-    <div>
-      <h2>Connected Account: {state.account || "Not Connected"}</h2>
+    <Router>
+      <Routes>
+        <Route path="/" element={<Login setUser={setUser} />} />
 
-      <h3>Create User</h3>
-      <input type="text" id="name" placeholder="Name" />
-      <input type="number" id="age" placeholder="Age" />
-      <button onClick={createUser}>Add User</button>
+        {/* Restrict COE route */}
+        <Route
+          path="/coe"
+          element={user?.role === "coe" ? <COE setUser={setUser} /> : <Navigate to="/" />}
+        />
 
-      <h3>Update User</h3>
-      <input type="number" id="updateId" placeholder="User ID" />
-      <input type="text" id="updateName" placeholder="New Name" />
-      <input type="number" id="updateAge" placeholder="New Age" />
-      <button onClick={updateUser}>Update User</button>
+        {/* Restrict Superintendent Portal */}
+        <Route
+          path="/superintendent"
+          element={user?.role === "superintendent" ? <SuperintendentPortal setUser={setUser} /> : <Navigate to="/" />}
+        />
 
-      <h3>Delete User</h3>
-      <input type="number" id="deleteId" placeholder="User ID" />
-      <button onClick={deleteUser}>Delete User</button>
+        <Route
+          path="/teacher"
+          element={user?.role === "teacher" ? <TeacherPortal setUser={setUser} /> : <Navigate to="/" />}
+        />
 
-      <h3>User List</h3>
-      <ul>
-        {users.map((user) => (
-          <li key={user.id}>
-            ID: {user.id}, Name: {user.name}, Age: {user.age}
-          </li>
-        ))}
-      </ul>
-    </div>
+        <Route
+          path="/recipient"
+          element={user?.role === "recipient" ? <RecipientPortal setUser={setUser} /> : <Navigate to="/" />}
+        />
+
+        {/* Only COE should be able to add a Superintendent */}
+        <Route
+          path="/add-superintendent"
+          element={user?.role === "coe" ? <AddSuperintendent /> : <Navigate to="/" />}
+        />
+
+        <Route
+          path="/add-paperRequest"
+          element={user?.role === "coe" ? <CreatePaperRequest /> : <Navigate to="/" />}
+        />
+      </Routes>
+    </Router>
   );
 }
+
+export default App;
