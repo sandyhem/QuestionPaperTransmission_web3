@@ -7423,12 +7423,12 @@
     "5777": {
       "events": {},
       "links": {},
-      "address": "0x2947DF686D3Eb1a6D420c712D058F352d9Ce1D80",
-      "transactionHash": "0xb5569b55bf70586e3f1710004c88c5976a35af7c66b1b72e5d643df2d8fee7c7"
+      "address": "0xc22E14983358Ad0Cfe111fF8f98489c7818893eE",
+      "transactionHash": "0xb26c41d6fd9ea809f538bc76c1a432ad87a585aa7816dfa33f716a07a45f934e"
     }
   },
   "schemaVersion": "3.4.16",
-  "updatedAt": "2025-02-25T13:15:31.636Z",
+  "updatedAt": "2025-03-06T15:51:01.369Z",
   "networkType": "ethereum",
   "devdoc": {
     "kind": "dev",
