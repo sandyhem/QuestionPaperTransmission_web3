@@ -1,6 +1,8 @@
 import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import Header from "../components/Header"; // Import Header
+import Web3 from "web3";
+import QuestionPaperSystem from "../contracts/QuestionPaperSystem.json";
 
 function Login({ setUser }) {
   const [email, setEmail] = useState("");
@@ -8,14 +10,46 @@ function Login({ setUser }) {
   const [role, setRole] = useState("");
   const navigate = useNavigate();
 
-  const handleLogin = (e) => {
-    e.preventDefault();
+  const [state, setState] = useState({ web3: null, contract: null, account: null });
+  //const [users, setUsers] = useState([]);
 
+    async function connectWallet() {
+      if (window.ethereum) {
+        try {
+          const web3 = new Web3(window.ethereum);
+          await window.ethereum.request({ method: "eth_requestAccounts" });
+          const accounts = await web3.eth.getAccounts();
+
+          const networkId = await web3.eth.net.getId();
+          const deployedNetwork = QuestionPaperSystem.networks[networkId];
+
+          if (!deployedNetwork) {
+            console.error("Contract not deployed on this network.");
+            return;
+          }
+
+          const contract = new web3.eth.Contract(QuestionPaperSystem.abi, deployedNetwork.address);
+          setState({ web3, contract, account: accounts[0] });
+          console.log(state,web3,contract,accounts[0]);
+
+          window.ethereum.on("accountsChanged", (accounts) => {
+            setState((prevState) => ({ ...prevState, account: accounts[0] }));
+          });
+        } catch (error) {
+          console.error("User denied wallet connection:", error);
+        }
+      } else {
+        console.error("MetaMask not detected.");
+      }
+    }
+
+  const handleLogin = async(e) => {
+    e.preventDefault();
+    await connectWallet();
     if (email && password && role) {
-      const userData = { email, role };
+      const userData = { email, role};
       localStorage.setItem("user", JSON.stringify(userData));
       setUser(userData);
-
       // Redirect based on role
       if (role === "coe") {
         navigate("/coe");

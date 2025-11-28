@@ -1,6 +1,6 @@
 import React from "react";
 import { useNavigate } from "react-router-dom";
-import "/Users/ashwathbalu/Documents/nodejs/cip/frontend/src/css/teacher.css";
+import "../css/teacher.css";
 
 function TeacherPortal({ setUser }) {
   const navigate = useNavigate();

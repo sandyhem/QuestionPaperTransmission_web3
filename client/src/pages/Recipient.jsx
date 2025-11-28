@@ -1,6 +1,6 @@
 import React from "react";
 import { useNavigate } from "react-router-dom";
-import "/Users/ashwathbalu/Documents/nodejs/cip/frontend/src/css/Recipient.css";
+import "../css/recipient.css";
 
 function RecipientPortal({ setUser }) {
   const navigate = useNavigate();

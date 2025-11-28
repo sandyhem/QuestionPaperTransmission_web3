@@ -1,28 +1,90 @@
 import React, { useState, useEffect } from "react";
+import Web3 from "web3";
+import QuestionPaperSystem from "../contracts/QuestionPaperSystem.json";
 
 const CreatePaperRequest = () => {
+        const [state, setState] = useState({ web3: null, contract: null, account: null });
+    
+        useEffect(() => {
+            async function connectWallet() {
+                if (window.ethereum) {
+                    try {
+                        const web3 = new Web3(window.ethereum);
+                        await window.ethereum.request({ method: "eth_requestAccounts" });
+                        const accounts = await web3.eth.getAccounts();
+                        const networkId = await web3.eth.net.getId();
+                        const deployedNetwork = QuestionPaperSystem.networks[networkId];
+    
+                        if (!deployedNetwork) {
+                            console.error("Contract not deployed on this network.");
+                            return;
+                        }
+    
+                        const contract = new web3.eth.Contract(QuestionPaperSystem.abi, deployedNetwork.address);
+                        setState({ web3, contract, account: accounts[0] });
+    
+                        window.ethereum.on("accountsChanged", (accounts) => {
+                            setState((prevState) => ({ ...prevState, account: accounts[0] }));
+                        });
+                    } catch (error) {
+                        console.error("User denied wallet connection:", error);
+                    }
+                } else {
+                    console.error("MetaMask not detected.");
+                }
+            }
+            connectWallet();
+        }, []);
+
     const [showTable, setShowTable] = useState(
         () => JSON.parse(localStorage.getItem("showTable")) || false
     );
 
-    const [paperRequests, setPaperRequests] = useState(
-        () => JSON.parse(localStorage.getItem("paperRequests")) || []
-    );
+    const [paperRequests, setPaperRequests] = useState([]);
 
     const [formData, setFormData] = useState({
         examId: '',
         examName: '',
-        subject: ''
+        subject: '',
+        teacher: '',
+        key: ''
     });
 
+     useEffect(() => {
+        async function fetchPaperRequests() {
+          if (!state.contract) return;
+    
+          try {
+             const result = await state.contract.methods.getAllPapers().call();
+             console.log(result)
+             const paperRequestsList = result.map((paper, index) => ({
+                examId: paper.ExamId,
+                examName: paper.ExamName,
+                subject: paper.Subject,
+                teacher: paper.teacher,
+                status: Number(paper.status) === 0 
+                  ? "Requested" 
+                  : Number(paper.status) === 1 
+                  ? "Uploaded" 
+                  : "Verified"
+              }));
+              
+             
+   
+           console.log("PaperRequests", paperRequestsList);
+           setPaperRequests(paperRequestsList);
+          } catch (error) {
+            console.error("Error fetching Papers:", error);
+          }
+        }
+    
+        fetchPaperRequests();
+      }, [state.contract]);
+    
     // Save state in localStorage
     useEffect(() => {
         localStorage.setItem("showTable", JSON.stringify(showTable));
     }, [showTable]);
-
-    useEffect(() => {
-        localStorage.setItem("paperRequests", JSON.stringify(paperRequests));
-    }, [paperRequests]);
 
     const handleChange = (e) => {
         const { id, value } = e.target;
@@ -32,12 +94,33 @@ const CreatePaperRequest = () => {
         }));
     };
 
-    const handleSubmit = (e) => {
+    const handleSubmit = async(e) => {
         e.preventDefault();
-        setPaperRequests(prevRequests => [...prevRequests, formData]);
-        setFormData({ examId: '', examName: '', subject: '' }); // Reset form
-        setShowTable(true); // Show table instead of form
+        await createPaperRequest();
+        setFormData({ examId: '', examName: '', subject: '', teacher: '', key: '' }); 
+        setShowTable(true); 
+        window.location.reload();
     };
+
+    async function createPaperRequest() {
+        const { contract, account } = state;
+        if (!account) {
+            alert("Please connect your wallet!");
+            return;
+        }
+        try {
+            await contract.methods.createPaperRequest(
+               formData.teacher,
+               formData.key,
+               formData.examId,
+               formData.examName,
+               formData.subject,
+            ).send({ from: account });
+            alert("Registration successful");
+        } catch (error) {
+            console.error("Transaction failed:", error);
+        }
+    }
 
     return (
         <div className="container mt-5">
@@ -60,6 +143,8 @@ const CreatePaperRequest = () => {
                                 <th>Exam ID</th>
                                 <th>Exam Name</th>
                                 <th>Subject</th>
+                                <th>Teacher</th>
+                                <th>Status</th>
                             </tr>
                         </thead>
                         <tbody>
@@ -70,6 +155,8 @@ const CreatePaperRequest = () => {
                                         <td>{request.examId}</td>
                                         <td>{request.examName}</td>
                                         <td>{request.subject}</td>
+                                        <td>{request.teacher}</td>
+                                        <td>{request.status}</td>
                                     </tr>
                                 ))
                             ) : (
@@ -116,6 +203,28 @@ const CreatePaperRequest = () => {
                                 required
                             />
                         </div>
+                        <div className="mb-3">
+                            <label htmlFor="teacher" className="form-label">Teacher Address</label>
+                            <input
+                                type="text"
+                                id="teacher"
+                                value={formData.teacher}
+                                onChange={handleChange}
+                                className="form-control"
+                                required
+                            />
+                        </div>
+                        {/* <div className="mb-3">
+                            <label htmlFor="key" className="form-label">Subject</label>
+                            <input
+                                type="text"
+                                id="key"
+                                value={formData.key}
+                                onChange={handleChange}
+                                className="form-control"
+                                required
+                            />
+                        </div> */}
                         <button type="submit" className="btn btn-success">Create Request</button>
                     </form>
                 </div>

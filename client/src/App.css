@@ -183,7 +183,7 @@ nav a:hover {
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  background-image: url("/Users/ashwathbalu/Documents/git/QuestionPaperTransmission_web3/client/public/images/background.avif");
+  background-image: url("../public/images/background.avif");
   background-size: cover;
   background-position: center;
   background-repeat: no-repeat;

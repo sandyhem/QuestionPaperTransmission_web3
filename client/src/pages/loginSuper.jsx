@@ -1,6 +1,6 @@
 import React from "react";
 import { useNavigate } from "react-router-dom";
-import "/Users/ashwathbalu/Documents/nodejs/cip/frontend/src/css/loginsuper.css"; 
+import "../css/loginsuper.css"; 
 
 function SuperintendentPortal({ setUser }) {
   const navigate = useNavigate();

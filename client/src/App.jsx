@@ -1,28 +1,7 @@
-<<<<<<< HEAD
-import React, { useEffect, useState } from "react";
-import { BrowserRouter, Routes, Route } from "react-router-dom";
-import Crud from "./Crud.jsx";
-import Encrypt from "./Encrypt.jsx";
-import FileEncryptor from "./FileEncryptor.jsx";
-import FileDecryptor from "./FileDecryptor.jsx";
-import Connect from "./components/connect.jsx";
-
-export default function App() {
- return (
-   <BrowserRouter>
-     <Routes>
-       <Route path="/" element={<Crud />} />
-       <Route path="/enc" element={<FileEncryptor />} />
-       <Route path="/dec" element={<FileDecryptor />}></Route>
-       <Route path="/home" element={<Connect/>}></Route>
-     </Routes>
-   </BrowserRouter>
- )
-=======
 import React, { useState, useEffect } from "react";
 import { BrowserRouter as Router, Routes, Route, Navigate } from "react-router-dom";
-import "bootstrap/dist/css/bootstrap.min.css"; // Import Bootstrap here
-import "./App.css"; // Keep your custom styles after Bootstrap
+import "bootstrap/dist/css/bootstrap.min.css"; 
+import "./App.css";
 import "./COE.css";
 
 import Login from "./pages/login";
@@ -30,9 +9,13 @@ import COE from "./pages/COE";
 import SuperintendentPortal from "./pages/loginSuper";
 import AddSuperintendent from "./pages/Superintendent";
 import TeacherPortal from "./pages/Teacher";
-import loginsuper from "./pages/loginSuper"; // Correctly added page
+import loginsuper from "./pages/loginSuper"; 
 import RecipientPortal from "./pages/Recipient";
 import CreatePaperRequest from "./pages/PaperRequest";
+import FileEncryptor from "./FileEncryptor";
+import FileDecryptor from "./FileDecryptor";
+
+
 
 function App() {
   // Initialize user state from localStorage
@@ -50,6 +33,7 @@ function App() {
   }, [user]);
 
   return (
+   
     <Router>
       <Routes>
         <Route path="/" element={<Login setUser={setUser} />} />
@@ -86,10 +70,20 @@ function App() {
           path="/add-paperRequest"
           element={user?.role === "coe" ? <CreatePaperRequest /> : <Navigate to="/" />}
         />
+          {/* <Route
+          path="/add-accessManage"
+          element={user?.role === "coe" ? <CreatePaperRequest /> : <Navigate to="/" />}
+        /> */}
+        {/* Only Teacher should be able to access the below routes */}
+       
+        {/* <Route path="/enc" element={<FileEncryptor />} />
+        <Route path="/dec" element={<FileDecryptor />} /> */}
+       
       </Routes>
     </Router>
+    
   );
->>>>>>> 4ad4634cf693b7c7fa0af182c21be2f913a719fe
+
 }
 
 export default App;

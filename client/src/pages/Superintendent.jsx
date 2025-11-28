@@ -1,52 +1,89 @@
 import React, { useState, useEffect } from "react";
 import SuperintendentTable from "./SuperintendentTable";
+import Web3 from "web3";
+import QuestionPaperSystem from "../contracts/QuestionPaperSystem.json";
 
 function AddSuperintendent() {
+    const [state, setState] = useState({ web3: null, contract: null, account: null });
+
+    useEffect(() => {
+        async function connectWallet() {
+            if (window.ethereum) {
+                try {
+                    const web3 = new Web3(window.ethereum);
+                    await window.ethereum.request({ method: "eth_requestAccounts" });
+                    const accounts = await web3.eth.getAccounts();
+                    const networkId = await web3.eth.net.getId();
+                    const deployedNetwork = QuestionPaperSystem.networks[networkId];
+
+                    if (!deployedNetwork) {
+                        console.error("Contract not deployed on this network.");
+                        return;
+                    }
+
+                    const contract = new web3.eth.Contract(QuestionPaperSystem.abi, deployedNetwork.address);
+                    setState({ web3, contract, account: accounts[0] });
+
+                    window.ethereum.on("accountsChanged", (accounts) => {
+                        setState((prevState) => ({ ...prevState, account: accounts[0] }));
+                    });
+                } catch (error) {
+                    console.error("User denied wallet connection:", error);
+                }
+            } else {
+                console.error("MetaMask not detected.");
+            }
+        }
+        connectWallet();
+    }, []);
+
     const [showTable, setShowTable] = useState(
         () => JSON.parse(localStorage.getItem("showTable")) || false
     );
 
-    const [superintendents, setSuperintendents] = useState(
-        () => JSON.parse(localStorage.getItem("superintendents")) || []
-    );
-
-    const [formData, setFormData] = useState({
-        name: '',
-        email: '',
-        password: '',
-        phone: '',
-        designation: ''
-    });
-
-    // Save table visibility state
     useEffect(() => {
         localStorage.setItem("showTable", JSON.stringify(showTable));
     }, [showTable]);
 
-    // Save superintendent list when it changes
-    useEffect(() => {
-        localStorage.setItem("superintendents", JSON.stringify(superintendents));
-    }, [superintendents]);
+    const [formData, setFormData] = useState({
+        name: '',
+        address: '',
+        email: '',
+        phone: '',
+    });
 
     const handleChange = (e) => {
         const { name, value } = e.target;
         setFormData({ ...formData, [name]: value });
     };
 
-    const handleSubmit = (e) => {
+    const handleSubmit = async (e) => {
         e.preventDefault();
-
-        const newSuperintendent = {
-            name: formData.name,
-            email: formData.email,
-            phone: formData.phone,
-            designation: formData.designation
-        };
-
-        setSuperintendents([...superintendents, newSuperintendent]);
-        setFormData({ name: '', email: '', password: '', phone: '', designation: '' });
+        await registerUser();
+        setFormData({ name: '', address: '', email: '', phone: '' });
         setShowTable(true); // Switch to table view after adding
+        window.location.reload();
     };
+
+    async function registerUser() {
+        const { contract, account } = state;
+        if (!account) {
+            alert("Please connect your wallet!");
+            return;
+        }
+        try {
+            await contract.methods.registerUser(
+                formData.address,
+                formData.name,
+                1,
+                formData.email,
+                formData.phone
+            ).send({ from: account });
+            alert("Registration successful");
+        } catch (error) {
+            console.error("Transaction failed:", error);
+        }
+    }
 
     return (
         <div className="container mt-5">
@@ -61,7 +98,7 @@ function AddSuperintendent() {
             </div>
 
             {showTable ? (
-                <SuperintendentTable superintendents={superintendents} />
+                <SuperintendentTable state={state} />
             ) : (
                 <div className="card p-4">
                     <form onSubmit={handleSubmit}>
@@ -71,6 +108,17 @@ function AddSuperintendent() {
                                 type="text" 
                                 name="name" 
                                 value={formData.name} 
+                                onChange={handleChange} 
+                                className="form-control" 
+                                required 
+                            />
+                        </div>
+                        <div className="mb-3">
+                            <label className="form-label">Address:</label>
+                            <input 
+                                type="text" 
+                                name="address" 
+                                value={formData.address} 
                                 onChange={handleChange} 
                                 className="form-control" 
                                 required 
@@ -88,33 +136,11 @@ function AddSuperintendent() {
                             />
                         </div>
                         <div className="mb-3">
-                            <label className="form-label">Password:</label>
-                            <input 
-                                type="password" 
-                                name="password" 
-                                value={formData.password} 
-                                onChange={handleChange} 
-                                className="form-control" 
-                                required 
-                            />
-                        </div>
-                        <div className="mb-3">
                             <label className="form-label">Phone:</label>
                             <input 
                                 type="tel" 
                                 name="phone" 
                                 value={formData.phone} 
-                                onChange={handleChange} 
-                                className="form-control" 
-                                required 
-                            />
-                        </div>
-                        <div className="mb-3">
-                            <label className="form-label">Designation:</label>
-                            <input 
-                                type="text" 
-                                name="designation" 
-                                value={formData.designation} 
                                 onChange={handleChange} 
                                 className="form-control" 
                                 required 
